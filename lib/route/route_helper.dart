@@ -1,4 +1,7 @@
+import 'dart:math';
+
 import 'package:food_delivery/address/add_address_page.dart';
+import 'package:food_delivery/address/pick_address_map.dart';
 import 'package:food_delivery/auth/sign_in_page.dart';
 import 'package:food_delivery/cart/cart_page.dart';
 import 'package:food_delivery/food/popular_food_detail.dart';
@@ -17,6 +20,8 @@ class RouteHelper{
   static const String cartPage = "/cart-page";
   static const String signIn = "/sign-in";
   static const String addAddress = "/add-address";
+  static const String pickAddressMap = "/pick-address";
+
   static const String payment = '/payment';
   static const String orderSuccess = '/order-successful';
 
@@ -31,8 +36,13 @@ class RouteHelper{
   static String getAddressPage()=>'$addAddress';
   static String getPaymentPay()=>'$payment';
   static String getOrderSuccessPage()=>'$orderSuccess';
+  static String getPickAddressPage()=>'$pickAddressMap';
 
   static List<GetPage> routes = [
+    GetPage(name: pickAddressMap, page: (){
+      PickAddressMap _pickAddress = Get.arguments;
+      return _pickAddress;
+    }),
     GetPage(name: splashPage, page: ()=>SplashScreen()),
 
     GetPage(name: initial, page: (){

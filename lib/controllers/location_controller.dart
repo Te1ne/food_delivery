@@ -37,6 +37,12 @@ class LocationController extends GetxController implements GetxService{
   bool get loading => _loading;
   Position get position => _position;
   Position get pickPosition => _pickPosition;
+  bool _isLoading = false;
+  bool get isLoading=>_isLoading;
+  bool _inZone = false;
+  bool get inZone=>_inZone;
+  bool _buttonDisable = true;
+  bool get buttonDisable=>_buttonDisable;
 
 
   void setMapController(GoogleMapController mapController){
@@ -66,6 +72,11 @@ class LocationController extends GetxController implements GetxService{
               speedAccuracy: 1, speed: 1, altitudeAccuracy: 1, headingAccuracy: 1
           );
         }
+
+        // ResponseModel _responseModel =
+        //   await getZone(position.target.latitude.toString(), position.target.longitude.toString(), false);
+
+        // _buttonDisable = !_responseModel.isSuccess;
         if(_changeAddress){
           String _address = await getAddressfromGeoCode(
             LatLng(
@@ -79,6 +90,11 @@ class LocationController extends GetxController implements GetxService{
       }catch(e){
         print(e);
       }
+      _loading=false;
+      update();
+    }
+    else{
+      _updateAddressData=true;
     }
   }
 
@@ -161,5 +177,46 @@ class LocationController extends GetxController implements GetxService{
     _allAddressList=[];
     update();
   }
+
+  String getUserAddressFromLocalStorage(){
+    return locationRepo.getUserAddress();
+  }
+
+  void setAddAddressData(){
+    _position=_pickPosition;
+    _placemark=_pickPlacemark;
+    _updateAddressData=false;
+    update();
+  }
+
+  // Future<ResponseModel> getZone(String lat, String lng, bool markerLoad) async {
+  //   late ResponseModel _responseModel;
+  //   if(markerLoad){
+  //     _loading=true;
+  //   }else{
+  //     _isLoading=true;
+  //   }
+  //   _inZone=true;
+  //
+  //   update();
+  //   // Response response = await locationRepo.getZone(lat, lng);
+  //   // if(response.statusCode==200){
+  //   //   _inZone=true;
+  //   //   _responseModel = ResponseModel(true, response.body["zone_id"].toString());
+  //   // }
+  //   // else{
+  //   //   _inZone=false;
+  //   //   _responseModel = ResponseModel(true, response.statusText!);
+  //   // }
+  //   // if(markerLoad){
+  //   //   _loading=false;
+  //   // }else{
+  //   //   _isLoading=false;
+  //   // }
+  //
+  //
+  //   update();
+  //   return _responseModel;
+  // }
 
 }
