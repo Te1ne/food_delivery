@@ -6,6 +6,7 @@ import 'package:food_delivery/controllers/cart_controller.dart';
 import 'package:food_delivery/controllers/location_controller.dart';
 import 'package:food_delivery/controllers/popular_product_controller.dart';
 import 'package:food_delivery/controllers/recommended_product_controller.dart';
+import 'package:food_delivery/controllers/user_controller.dart';
 import 'package:food_delivery/home/main_food_page.dart';
 import 'package:food_delivery/route/route_helper.dart';
 import 'package:food_delivery/utils/app_constants.dart';
@@ -205,8 +206,9 @@ class CartPage extends StatelessWidget {
                         Get.toNamed(RouteHelper.getAddressPage());
                       }
                       else{
+                        //Get.offNamed(RouteHelper.getInitial());
+                        Get.toNamed(RouteHelper.getPaymentPay());
                         cartController.addToHistory();
-                        Get.offNamed(RouteHelper.getInitial());
                       }
                     }
                     else{
