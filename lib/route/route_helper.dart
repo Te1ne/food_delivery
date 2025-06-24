@@ -9,8 +9,8 @@ import 'package:food_delivery/food/recommended_food_detail.dart';
 import 'package:food_delivery/home/home_page.dart';
 import 'package:food_delivery/home/main_food_page.dart';
 import 'package:food_delivery/models/order_model.dart';
+import 'package:food_delivery/payment/order_success_page.dart';
 import 'package:food_delivery/payment/payment_page.dart';
-import 'package:food_delivery/payment/qr_payment.dart';
 import 'package:food_delivery/splash/splash_page.dart';
 import 'package:get/get.dart';
 
@@ -84,6 +84,7 @@ class RouteHelper{
     GetPage(name: payment, page: (){
       return PaymentHomePage();
     }),
+    GetPage(name: orderSuccess, page: () => OrderSuccessPage()),
     // GetPage(name: payment, page: ()=>PaymentPage(
     //   orderModel: OrderModel(
     //       id: int.parse(Get.parameters['id']!),

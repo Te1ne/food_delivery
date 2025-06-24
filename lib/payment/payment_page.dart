@@ -1,8 +1,13 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:food_delivery/payment/qr_generate_page.dart';
-import 'package:food_delivery/payment/qr_scan_page.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:get/get.dart';
+import 'dart:async';
+import 'dart:math' as Math;
+import 'package:food_delivery/controllers/cart_controller.dart';
+import 'package:food_delivery/utils/colors.dart';
+import 'package:food_delivery/utils/dimensions.dart';
+import 'package:food_delivery/widgets/big_text.dart';
+import 'package:food_delivery/widgets/small_text.dart';
 
 class PaymentHomePage extends StatefulWidget {
   @override
@@ -10,345 +15,247 @@ class PaymentHomePage extends StatefulWidget {
 }
 
 class _PaymentHomePageState extends State<PaymentHomePage> {
-  final TextEditingController _amountController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
+  String paymentData = '';
+  String orderId = '';
+  CartController cartController = Get.find<CartController>();
+  Timer? _paymentTimer;
+  bool _isPaymentProcessing = false;
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        title: Text('Thanh toán QR', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        elevation: 0,
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+  void initState() {
+    super.initState();
+    generatePaymentQR();
+    startPaymentMonitoring();
+  }
+
+  @override
+  void dispose() {
+    _paymentTimer?.cancel();
+    super.dispose();
+  }
+
+  void generatePaymentQR() {
+    // Tạo dữ liệu thanh toán duy nhất
+    int totalAmount = cartController.totalAmount;
+    print(totalAmount);
+    orderId = DateTime.now().millisecondsSinceEpoch.toString();
+
+    setState(() {
+      paymentData = 'PAYMENT:$orderId:$totalAmount:${DateTime.now().millisecondsSinceEpoch}';
+    });
+  }
+
+  void startPaymentMonitoring() {
+    // Kiểm tra trạng thái thanh toán mỗi 2 giây
+    _paymentTimer = Timer.periodic(Duration(seconds: 2), (timer) {
+      checkPaymentStatus();
+    });
+  }
+
+  Future<void> checkPaymentStatus() async {
+    if (_isPaymentProcessing) return;
+
+    try {
+      // Gọi API để kiểm tra trạng thái thanh toán
+      // Thay thế bằng API thực tế của bạn
+      bool isPaymentSuccess = await simulatePaymentCheck();
+
+      if (isPaymentSuccess) {
+        _isPaymentProcessing = true;
+        _paymentTimer?.cancel();
+
+        // Hiển thị loading
+        showPaymentProcessingDialog();
+
+        // Simulate processing time
+        await Future.delayed(Duration(seconds: 2));
+
+        // Add to history và chuyển trang
+        Navigator.of(context).pop(); // Close loading dialog
+        Get.toNamed('/order-successful');
+      }
+    } catch (e) {
+      print('Error checking payment status: $e');
+    }
+  }
+
+  Future<bool> simulatePaymentCheck() async {
+    // Mô phỏng việc kiểm tra thanh toán
+    // Trong thực tế, bạn sẽ gọi API để kiểm tra:
+    // - Có ai đó quét mã QR này chưa
+    // - Thanh toán có thành công không
+
+    // Simulate random success after some time (for demo)
+    if (DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(int.parse(orderId))).inSeconds > 10) {
+      return Math.Random().nextBool(); // 50% chance success after 10 seconds
+    }
+    return false;
+  }
+
+  void showPaymentProcessingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Balance Card
-            Container(
-              padding: EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.blue[600]!, Colors.blue[800]!],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(15),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.blue.withOpacity(0.3),
-                    blurRadius: 10,
-                    offset: Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Số dư khả dụng',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 16,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    '2,450,000 VNĐ',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            SizedBox(height: 30),
-
-            // Payment Form
-            Container(
-              padding: EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(15),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Thông tin thanh toán',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[800],
-                    ),
-                  ),
-                  SizedBox(height: 20),
-
-                  // Amount Input
-                  TextField(
-                    controller: _amountController,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    decoration: InputDecoration(
-                      labelText: 'Số tiền (VNĐ)',
-                      hintText: 'Nhập số tiền cần thanh toán',
-                      prefixIcon: Icon(Icons.attach_money, color: Colors.green),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: Colors.blue, width: 2),
-                      ),
-                    ),
-                  ),
-
-                  SizedBox(height: 15),
-
-                  // Description Input
-                  TextField(
-                    controller: _descriptionController,
-                    decoration: InputDecoration(
-                      labelText: 'Nội dung (tuỳ chọn)',
-                      hintText: 'Mô tả giao dịch',
-                      prefixIcon: Icon(Icons.description, color: Colors.orange),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: Colors.blue, width: 2),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            SizedBox(height: 30),
-
-            // Quick Amount Buttons
-            Text(
-              'Số tiền nhanh',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[700],
-              ),
-            ),
-            SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildQuickAmountButton('50K', 50000),
-                ),
-                SizedBox(width: 10),
-                Expanded(
-                  child: _buildQuickAmountButton('100K', 100000),
-                ),
-                SizedBox(width: 10),
-                Expanded(
-                  child: _buildQuickAmountButton('200K', 200000),
-                ),
-                SizedBox(width: 10),
-                Expanded(
-                  child: _buildQuickAmountButton('500K', 500000),
-                ),
-              ],
-            ),
-
-            SizedBox(height: 30),
-
-            // Action Buttons
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => _generateQRCode(),
-                    icon: Icon(Icons.qr_code, size: 24),
-                    label: Text('Tạo mã QR', style: TextStyle(fontSize: 16)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 15),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => _scanQRCode(),
-                    icon: Icon(Icons.qr_code_scanner, size: 24),
-                    label: Text('Quét mã QR', style: TextStyle(fontSize: 16)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            SizedBox(height: 30),
-
-            // Recent Transactions
-            Container(
-              padding: EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(15),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Giao dịch gần đây',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[800],
-                    ),
-                  ),
-                  SizedBox(height: 15),
-                  _buildTransactionItem('Thanh toán QR', '-150,000 VNĐ', '12:30', Colors.red),
-                  _buildTransactionItem('Nhận tiền', '+500,000 VNĐ', '10:15', Colors.green),
-                  _buildTransactionItem('Chuyển khoản', '-75,000 VNĐ', '09:45', Colors.red),
-                ],
-              ),
-            ),
+            CircularProgressIndicator(color: AppColors.mainColor),
+            SizedBox(height: Dimensions.height20),
+            BigText(text: "Đang xử lý thanh toán..."),
+            SizedBox(height: Dimensions.height10),
+            SmallText(text: "Vui lòng chờ trong giây lát", color: Colors.grey),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildQuickAmountButton(String label, int amount) {
-    return ElevatedButton(
-      onPressed: () {
-        _amountController.text = amount.toString();
-      },
-      child: Text(label),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.grey[100],
-        foregroundColor: Colors.grey[800],
-        padding: EdgeInsets.symmetric(vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: BigText(text: "Thanh toán", color: Colors.white),
+        backgroundColor: AppColors.mainColor,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Get.back(),
         ),
       ),
-    );
-  }
-
-  Widget _buildTransactionItem(String title, String amount, String time, Color amountColor) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Container(
-            padding: EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: amountColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              Icons.payment,
-              color: amountColor,
-              size: 20,
-            ),
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w500,
-                    fontSize: 14,
+      body: GetBuilder<CartController>(
+        builder: (cartController) {
+          return SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.all(Dimensions.width20),
+              child: Column(
+                children: [
+                  // Thông tin đơn hàng
+                  Container(
+                    padding: EdgeInsets.all(Dimensions.width20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(Dimensions.radius20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.1),
+                          spreadRadius: 1,
+                          blurRadius: 10,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                Text(
-                  time,
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 12,
+
+                  SizedBox(height: Dimensions.height30),
+
+                  // Mã QR thanh toán
+                  Container(
+                    padding: EdgeInsets.all(Dimensions.width20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(Dimensions.radius20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.1),
+                          spreadRadius: 1,
+                          blurRadius: 10,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        BigText(text: "Quét mã QR để thanh toán"),
+                        SizedBox(height: Dimensions.height20),
+
+                        // QR Code
+                        Container(
+                          padding: EdgeInsets.all(Dimensions.width20),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(Dimensions.radius15),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: paymentData.isNotEmpty
+                              ? QrImageView(
+                            data: paymentData,
+                            version: QrVersions.auto,
+                            size: 250.0,
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black,
+                          )
+                              : Container(
+                            width: 250,
+                            height: 250,
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: AppColors.mainColor,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        SizedBox(height: Dimensions.height20),
+                        SmallText(
+                          text: "Sử dụng ứng dụng ngân hàng hoặc ví điện tử để quét mã QR",
+                          color: Colors.grey,
+                        ),
+                        SizedBox(height: Dimensions.height10),
+                        SmallText(
+                          text: "Hệ thống sẽ tự động phát hiện khi thanh toán thành công",
+                          color: Colors.grey,
+                        ),
+                        SizedBox(height: Dimensions.height10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.mainColor,
+                              ),
+                            ),
+                            SizedBox(width: Dimensions.width10),
+                            SmallText(
+                              text: "Đang chờ thanh toán...",
+                              color: AppColors.mainColor,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+
+                  SizedBox(height: Dimensions.height30),
+
+                  // Nút demo (để test)
+                  Container(
+                    width: double.maxFinite,
+                    height: Dimensions.height20*3,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(Dimensions.radius20),
+                      color: AppColors.mainColor,
+                    ),
+                    child: TextButton(
+                      onPressed: () {
+                        // Simulate QR scan success
+                        Get.toNamed('/order-successful');
+                      },
+                      child: BigText(
+                        text: "Demo: Thanh toán thành công",
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          Text(
-            amount,
-            style: TextStyle(
-              color: amountColor,
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _generateQRCode() {
-    if (_amountController.text.isEmpty) {
-      _showMessage('Vui lòng nhập số tiền');
-      return;
-    }
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => QRGeneratePage(
-          amount: _amountController.text,
-          description: _descriptionController.text,
-        ),
-      ),
-    );
-  }
-
-  void _scanQRCode() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => QRScanPage()),
-    );
-  }
-
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.orange,
+          );
+        },
       ),
     );
   }
