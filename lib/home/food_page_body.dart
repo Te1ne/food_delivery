@@ -15,6 +15,8 @@ import 'package:food_delivery/widgets/icon_and_text_widget.dart';
 import 'package:food_delivery/widgets/small_text.dart';
 import 'package:get/get.dart';
 
+enum SortType { name, price, rating, popularity }
+
 class FoodPageBody extends StatefulWidget {
   const FoodPageBody({super.key});
 
@@ -27,6 +29,9 @@ class _FoodPageBodyState extends State<FoodPageBody> {
   var _currPageValue = 0.0;
   double _scaleFactor = 0.8;
   double _height = Dimensions.pageViewContainer;
+  SortType _currentSortType = SortType.name;
+  bool _isAscending = true;
+
   @override
   void initState(){
     super.initState();
@@ -43,6 +48,148 @@ class _FoodPageBodyState extends State<FoodPageBody> {
     super.dispose();
   }
 
+  List<ProductModel> _sortProducts(List<ProductModel> products) {
+    List<ProductModel> sortedList = List.from(products);
+
+    switch (_currentSortType) {
+      case SortType.name:
+        sortedList.sort((a, b) => _isAscending
+            ? a.name!.compareTo(b.name!)
+            : b.name!.compareTo(a.name!));
+        break;
+      case SortType.price:
+        sortedList.sort((a, b) => _isAscending
+            ? a.price!.compareTo(b.price!)
+            : b.price!.compareTo(a.price!));
+        break;
+      case SortType.rating:
+        sortedList.sort((a, b) => _isAscending
+            ? (a.stars ?? 0).compareTo(b.stars ?? 0)
+            : (b.stars ?? 0).compareTo(a.stars ?? 0));
+        break;
+      case SortType.popularity:
+      // Giả sử có trường popularity hoặc dùng id như độ phổ biến
+        sortedList.sort((a, b) => _isAscending
+            ? (a.id ?? 0).compareTo(b.id ?? 0)
+            : (b.id ?? 0).compareTo(a.id ?? 0));
+        break;
+    }
+
+    return sortedList;
+  }
+
+  String _getSortButtonText() {
+    String sortName = "";
+    switch (_currentSortType) {
+      case SortType.name:
+        sortName = "Tên";
+        break;
+      case SortType.price:
+        sortName = "Giá";
+        break;
+      case SortType.rating:
+        sortName = "Đánh giá";
+        break;
+      case SortType.popularity:
+        sortName = "Phổ biến";
+        break;
+    }
+    return "$sortName ${_isAscending ? '↑' : '↓'}";
+  }
+
+  void _showSortOptions() {
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(Dimensions.radius20)),
+      ),
+      builder: (BuildContext context) {
+        return Container(
+          padding: EdgeInsets.all(Dimensions.width20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Sắp xếp theo',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: Dimensions.height20),
+              _buildSortOption('Tên sản phẩm', SortType.name, Icons.sort_by_alpha),
+              _buildSortOption('Giá cả', SortType.price, Icons.attach_money),
+              _buildSortOption('Đánh giá', SortType.rating, Icons.star),
+              _buildSortOption('Độ phổ biến', SortType.popularity, Icons.trending_up),
+              SizedBox(height: Dimensions.height20),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _isAscending = true;
+                        });
+                        Navigator.pop(context);
+                      },
+                      icon: Icon(Icons.arrow_upward),
+                      label: Text('Tăng dần'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _isAscending ? AppColors.mainColor : Colors.grey[300],
+                        foregroundColor: _isAscending ? Colors.white : Colors.black,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: Dimensions.width10),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _isAscending = false;
+                        });
+                        Navigator.pop(context);
+                      },
+                      icon: Icon(Icons.arrow_downward),
+                      label: Text('Giảm dần'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: !_isAscending ? AppColors.mainColor : Colors.grey[300],
+                        foregroundColor: !_isAscending ? Colors.white : Colors.black,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSortOption(String title, SortType sortType, IconData icon) {
+    bool isSelected = _currentSortType == sortType;
+    return ListTile(
+      leading: Icon(
+        icon,
+        color: isSelected ? AppColors.mainColor : Colors.grey,
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: isSelected ? AppColors.mainColor : Colors.black,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
+      trailing: isSelected ? Icon(Icons.check, color: AppColors.mainColor) : null,
+      onTap: () {
+        setState(() {
+          _currentSortType = sortType;
+        });
+        Navigator.pop(context);
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -52,12 +199,12 @@ class _FoodPageBodyState extends State<FoodPageBody> {
           return popularProducts.isLoaded?Container(
             //color: Colors.redAccent,
             height: Dimensions.pageView,
-              child: PageView.builder(
-                  controller: pageController,
-                  itemCount: popularProducts.popularProductList.length,
-                  itemBuilder: (context, position){
-                    return _buildPageItem(position, popularProducts.popularProductList[position]);
-                  }),
+            child: PageView.builder(
+                controller: pageController,
+                itemCount: popularProducts.popularProductList.length,
+                itemBuilder: (context, position){
+                  return _buildPageItem(position, popularProducts.popularProductList[position]);
+                }),
 
           ):CircularProgressIndicator(
             color: AppColors.mainColor,
@@ -76,24 +223,60 @@ class _FoodPageBodyState extends State<FoodPageBody> {
             ),
           );
         }),
-        //popular text
+        //popular text with sort button
         SizedBox(height: Dimensions.height30,),
         Container(
-          margin: EdgeInsets.only(left: Dimensions.width30),
+          margin: EdgeInsets.only(left: Dimensions.width30, right: Dimensions.width30),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              BigText(text: "Recommended"),
-              SizedBox(width: Dimensions.width10,),
-              Container(
-                margin: const EdgeInsets.only(bottom: 3),
-                child: BigText(text: ".", color: Colors.black26,),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  BigText(text: "Recommended"),
+                  SizedBox(width: Dimensions.width10,),
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 3),
+                    child: BigText(text: ".", color: Colors.black26,),
+                  ),
+                  SizedBox(width: Dimensions.width10,),
+                ],
               ),
-              SizedBox(width: Dimensions.width10,),
-              Container(
-                margin: const EdgeInsets.only(bottom: 2),
-                child: SmallText(text: "Food pairing",),
-              )
+              // Sort button
+              GestureDetector(
+                onTap: _showSortOptions,
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Dimensions.width10,
+                    vertical: Dimensions.height10/2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.mainColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(Dimensions.radius15),
+                    border: Border.all(color: AppColors.mainColor, width: 1),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.sort,
+                        color: AppColors.mainColor,
+                        size: 16,
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        _getSortButtonText(),
+                        style: TextStyle(
+                          color: AppColors.mainColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -104,11 +287,14 @@ class _FoodPageBodyState extends State<FoodPageBody> {
           return recommendedProduct.isLoaded?ListView.builder(
               physics: NeverScrollableScrollPhysics(),
               shrinkWrap: true,
-              itemCount: recommendedProduct.recommendedProductList.length,
+              itemCount: _sortProducts(recommendedProduct.recommendedProductList).length,
               itemBuilder: (context, index){
+                List<ProductModel> sortedProducts = _sortProducts(recommendedProduct.recommendedProductList);
                 return GestureDetector(
                   onTap: (){
-                    Get.toNamed(RouteHelper.getRecommendedFood(index, "home"));
+                    // Tìm index gốc của sản phẩm trong danh sách ban đầu
+                    int originalIndex = recommendedProduct.recommendedProductList.indexOf(sortedProducts[index]);
+                    Get.toNamed(RouteHelper.getRecommendedFood(originalIndex, "home"));
                   },
                   child: Container(
                     margin: EdgeInsets.only(left: Dimensions.width20, right: Dimensions.width20, bottom: Dimensions.height10),
@@ -124,7 +310,7 @@ class _FoodPageBodyState extends State<FoodPageBody> {
                               image: DecorationImage(
                                   fit: BoxFit.cover,
                                   image: NetworkImage(
-                                      AppConstants.BASE_URL+AppConstants.UPLOAD_URL+recommendedProduct.recommendedProductList[index].img!
+                                      AppConstants.BASE_URL+AppConstants.UPLOAD_URL+sortedProducts[index].img!
                                   )
                               )
                           ),
@@ -139,30 +325,75 @@ class _FoodPageBodyState extends State<FoodPageBody> {
                                   bottomRight: Radius.circular(Dimensions.radius20)
                               ),
                               color: Colors.white,
-                  
+
                             ),
                             child: Padding(
                               padding: EdgeInsets.only(left: Dimensions.width10, right: Dimensions.width10),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  BigText(text: recommendedProduct.recommendedProductList[index].name!),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Expanded(
+                                        child: BigText(text: sortedProducts[index].name!),
+                                      ),
+                                      if (sortedProducts[index].price != null)
+                                        Text(
+                                          '\$ ${sortedProducts[index].price}',
+                                          style: TextStyle(
+                                            color: AppColors.mainColor,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 20,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
                                   SizedBox(height: Dimensions.height10,),
-                                  SmallText(text: "With chinese characteristics"),
+                                  Row(
+                                    children: [
+                                      if (sortedProducts[index].stars != null) ...[
+                                        Icon(Icons.star, color: Colors.amber, size: 14),
+                                        SizedBox(width: 2),
+                                        Text(
+                                          '${sortedProducts[index].stars}',
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                        SizedBox(width: 8),
+                                      ],
+                                      Expanded(
+                                        child: SmallText(
+                                          text: sortedProducts[index].description!.length > 30
+                                              ? '${sortedProducts[index].description!.substring(0, 30)}...'
+                                              : sortedProducts[index].description!,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                   SizedBox(height: Dimensions.height10,),
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      IconAndTextWidget(icon: Icons.circle_sharp,
-                                          text: "Normal",
-                                          iconColor: AppColors.iconColor1),
-                                      IconAndTextWidget(icon: Icons.location_on,
-                                          text: "1.7km",
-                                          iconColor: AppColors.mainColor),
-                                      IconAndTextWidget(icon: Icons.access_time_rounded,
-                                          text: "32min",
-                                          iconColor: AppColors.iconColor2)
+                                      Flexible(
+                                        child: IconAndTextWidget(icon: Icons.circle_sharp,
+                                            text: "Normal",
+                                            iconColor: AppColors.iconColor1),
+                                      ),
+                                      Flexible(
+                                        child: IconAndTextWidget(icon: Icons.location_on,
+                                            text: "1.7km",
+                                            iconColor: AppColors.mainColor),
+                                      ),
+                                      Flexible(
+                                        child: IconAndTextWidget(icon: Icons.access_time_rounded,
+                                            text: "32min",
+                                            iconColor: AppColors.iconColor2),
+                                      )
                                     ],
                                   )
                                 ],
@@ -206,9 +437,9 @@ class _FoodPageBodyState extends State<FoodPageBody> {
       child: Stack(
         children: [
           GestureDetector(
-          onTap: (){
+            onTap: (){
 
-            Get.toNamed(RouteHelper.getPopularFood(index, "home"));
+              Get.toNamed(RouteHelper.getPopularFood(index, "home"));
             },
             child: Container(
               height: Dimensions.pageViewContainer,
@@ -235,13 +466,13 @@ class _FoodPageBodyState extends State<FoodPageBody> {
                   color: Colors.white,
                   boxShadow: [
                     BoxShadow(
-                      color: Color(0xFFe8e8e8),
-                      blurRadius: 5.0,
-                      offset: Offset(0, 5)
+                        color: Color(0xFFe8e8e8),
+                        blurRadius: 5.0,
+                        offset: Offset(0, 5)
                     ),
                     BoxShadow(
-                      color: Colors.white,
-                      offset: Offset(-5, 0)
+                        color: Colors.white,
+                        offset: Offset(-5, 0)
                     ),
                     BoxShadow(
                         color: Colors.white,

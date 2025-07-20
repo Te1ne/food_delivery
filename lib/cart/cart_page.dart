@@ -17,8 +17,68 @@ import 'package:food_delivery/widgets/big_text.dart';
 import 'package:food_delivery/widgets/small_text.dart';
 import 'package:get/get.dart';
 
-class CartPage extends StatelessWidget {
+class CartPage extends StatefulWidget {
   const CartPage({super.key});
+
+  @override
+  _CartPageState createState() => _CartPageState();
+}
+
+class _CartPageState extends State<CartPage> {
+  final TextEditingController _discountController = TextEditingController();
+  bool _isDiscountApplied = false;
+  double _discountPercent = 0.0;
+  String _discountMessage = '';
+
+  void _applyDiscount() {
+    String discountCode = _discountController.text.trim().toLowerCase();
+
+    if (discountCode == 'food') {
+      setState(() {
+        _isDiscountApplied = true;
+        _discountPercent = 0.10; // 10%
+        _discountMessage = 'Mã giảm giá đã được áp dụng! Giảm 10%';
+      });
+
+      Get.snackbar(
+          "Thành công",
+          "Mã giảm giá đã được áp dụng!",
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          duration: Duration(seconds: 2)
+      );
+    } else {
+      setState(() {
+        _isDiscountApplied = false;
+        _discountPercent = 0.0;
+        _discountMessage = 'Mã giảm giá không hợp lệ';
+      });
+
+      Get.snackbar(
+          "Lỗi",
+          "Mã giảm giá không hợp lệ!",
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          duration: Duration(seconds: 2)
+      );
+    }
+  }
+
+  void _removeDiscount() {
+    setState(() {
+      _isDiscountApplied = false;
+      _discountPercent = 0.0;
+      _discountMessage = '';
+      _discountController.clear();
+    });
+  }
+
+  double _calculateFinalAmount(double originalAmount) {
+    if (_isDiscountApplied) {
+      return originalAmount * (1 - _discountPercent);
+    }
+    return originalAmount;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +123,6 @@ class CartPage extends StatelessWidget {
                   bottom: 0,
                   child: Container(
                     margin: EdgeInsets.only(top: Dimensions.height15),
-                    //color: Colors.redAccent,
                     child: MediaQuery.removePadding(
                       context: context,
                       removeTop: true,
@@ -145,7 +204,7 @@ class CartPage extends StatelessWidget {
                                                         },
                                                         child: Icon(Icons.remove, color: AppColors.signColor,)),
                                                     SizedBox(width: Dimensions.width10,),
-                                                    BigText(text: _cartList[index].quantity.toString()),//popularProduct.inCartItems.toString()),
+                                                    BigText(text: _cartList[index].quantity.toString()),
                                                     SizedBox(width: Dimensions.width10,),
                                                     GestureDetector(
                                                         onTap: (){
@@ -171,9 +230,11 @@ class CartPage extends StatelessWidget {
           ],
         ),
         bottomNavigationBar: GetBuilder<CartController>(builder: (cartController){
+          double originalAmount = cartController.totalAmount.toDouble();
+          double finalAmount = _calculateFinalAmount(originalAmount);
+
           return Container(
-            height: Dimensions.bottomHeightBar,
-            padding: EdgeInsets.only(top: Dimensions.height30, bottom: Dimensions.height30, left: Dimensions.width20, right: Dimensions.width20),
+            padding: EdgeInsets.only(top: Dimensions.height15, bottom: Dimensions.height15, left: Dimensions.width20, right: Dimensions.width20),
             decoration: BoxDecoration(
                 color: AppColors.buttonBackgroundColor,
                 borderRadius: BorderRadius.only(
@@ -182,58 +243,166 @@ class CartPage extends StatelessWidget {
                 )
             ),
             child: cartController.getItems.length>0?
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: EdgeInsets.only(top: Dimensions.height20, bottom: Dimensions.height20, left: Dimensions.width20, right: Dimensions.width20),
-                  decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(Dimensions.radius20),
-                      color: Colors.white
-                  ),
-                  child: Row(
-                    children: [
-                      SizedBox(width: Dimensions.width10,),
-                      BigText(text: "\$ " + cartController.totalAmount.toString()),
-                      SizedBox(width: Dimensions.width10,),
-                    ],
-                  ),
-                ),
-                GestureDetector(
-                  onTap: (){
-                    if(Get.find<AuthController>().userLoggedIn()){
-                      if(Get.find<LocationController>().addressList.isEmpty){
-                        Get.toNamed(RouteHelper.getAddressPage());
-                      }
-                      else{
-                        //Get.offNamed(RouteHelper.getInitial());
-                        int totalAmount = (cartController.totalAmount.toInt()*25000);
-                        String orderCode = (100 + (DateTime.now().millisecondsSinceEpoch % 900)).toString(); // số 3 chữ số ngẫu nhiên
-                        String addInfo = "THANH TOAN DON HANG $orderCode";
-                        Get.toNamed('/payment', parameters: {
-                          'amount': totalAmount.toString(),
-                          'info': addInfo,
-                        });
-                        cartController.addToHistory();
-                      }
-                    }
-                    else{
-                      Get.toNamed(RouteHelper.getSignInPage());
-                    }
-                  },
-                  child: Container(
-                    padding: EdgeInsets.only(top: Dimensions.height20, bottom: Dimensions.height20, left: Dimensions.width20, right: Dimensions.width20),
-                    child: BigText(text: "Check out", color: Colors.white,),
-                    decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(Dimensions.radius20),
-                        color: AppColors.mainColor
+            SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Discount Code Section
+                  Container(
+                    margin: EdgeInsets.only(bottom: Dimensions.height10),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            height: 40,
+                            padding: EdgeInsets.symmetric(horizontal: Dimensions.width10),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(Dimensions.radius15),
+                              border: Border.all(
+                                color: _isDiscountApplied ? Colors.green : Colors.grey.shade300,
+                                width: 1,
+                              ),
+                            ),
+                            child: TextField(
+                              controller: _discountController,
+                              enabled: !_isDiscountApplied,
+                              style: TextStyle(fontSize: Dimensions.font16),
+                              decoration: InputDecoration(
+                                border: InputBorder.none,
+                                hintText: "Nhập mã giảm giá",
+                                hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: Dimensions.font16),
+                                contentPadding: EdgeInsets.symmetric(vertical: 8),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: Dimensions.width10),
+                        GestureDetector(
+                          onTap: _isDiscountApplied ? _removeDiscount : _applyDiscount,
+                          child: Container(
+                            height: 40,
+                            padding: EdgeInsets.symmetric(horizontal: Dimensions.width15),
+                            decoration: BoxDecoration(
+                              color: _isDiscountApplied ? Colors.red : AppColors.mainColor,
+                              borderRadius: BorderRadius.circular(Dimensions.radius15),
+                            ),
+                            child: Center(
+                              child: Text(
+                                _isDiscountApplied ? "Hủy" : "Áp dụng",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: Dimensions.font16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                )
-              ],
+
+                  // Discount Message
+                  if (_discountMessage.isNotEmpty)
+                    Container(
+                      margin: EdgeInsets.only(bottom: Dimensions.height10),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          _discountMessage,
+                          style: TextStyle(
+                            color: _isDiscountApplied ? Colors.green : Colors.red,
+                            fontSize: Dimensions.font16,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // Price and Checkout Section
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: Dimensions.width15, vertical: Dimensions.height10),
+                        decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(Dimensions.radius20),
+                            color: Colors.white
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (_isDiscountApplied) ...[
+                              Row(
+                                children: [
+                                  Text(
+                                    "Tổng: \$ ${originalAmount.toStringAsFixed(2)}",
+                                    style: TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: Dimensions.font16,
+                                      decoration: TextDecoration.lineThrough,
+                                    ),
+                                  ),
+                                  SizedBox(width: 5),
+                                  Text(
+                                    "(-${(_discountPercent * 100).toInt()}%)",
+                                    style: TextStyle(color: Colors.green, fontSize: Dimensions.font16),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 2),
+                            ],
+                            BigText(
+                              text: "\$ ${finalAmount.toStringAsFixed(2)}",
+                              color: _isDiscountApplied ? Colors.green : Colors.black,
+                              size: Dimensions.font20,
+                            ),
+                          ],
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: (){
+                          if(Get.find<AuthController>().userLoggedIn()){
+                            if(Get.find<LocationController>().addressList.isEmpty){
+                              Get.toNamed(RouteHelper.getAddressPage());
+                            }
+                            else{
+                              int totalAmount = (finalAmount.toInt()*25000);
+                              String orderCode = (100 + (DateTime.now().millisecondsSinceEpoch % 900)).toString();
+                              String addInfo = "THANH TOAN DON HANG $orderCode";
+                              Get.toNamed('/payment', parameters: {
+                                'amount': totalAmount.toString(),
+                                'info': addInfo,
+                              });
+                              cartController.addToHistory();
+                            }
+                          }
+                          else{
+                            Get.toNamed(RouteHelper.getSignInPage());
+                          }
+                        },
+                        child: Container(
+                          padding: EdgeInsets.symmetric(horizontal: Dimensions.width20, vertical: Dimensions.height15),
+                          child: BigText(text: "Check out", color: Colors.white, size: Dimensions.font16),
+                          decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(Dimensions.radius20),
+                              color: AppColors.mainColor
+                          ),
+                        ),
+                      )
+                    ],
+                  ),
+                ],
+              ),
             ):Container(),
           );
         },)
     );
+  }
+
+  @override
+  void dispose() {
+    _discountController.dispose();
+    super.dispose();
   }
 }
